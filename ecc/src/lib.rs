@@ -59,8 +59,10 @@ impl FiniteField {
     }
 
     fn inv_multiplication(c: &BigUint, p: &BigUint) -> BigUint {
-        // c^(-1) mod p
-        todo!()
+        // TODO: this function is limited. It use Fermat's Little Theorem and thus
+        // it's only is valid for p prime
+        // c^(-1) mod p = c^(p-2) mod p
+        c.modpow(&(p - BigUint::from(2u32)), p)
     }
 }
 
@@ -150,4 +152,17 @@ mod test {
         // 0 is the identity element in an addition
     }
 
+    #[test]
+    fn test_inv_multiplication_identity() {
+        let c = BigUint::from(4u32);
+        let p = BigUint::from(11u32);
+
+        // p - c
+        let c_inv = FiniteField::inv_multiplication(&c, &p);
+
+        // 4 * 3 mod 11 = 12 mod 11 = 1
+        assert_eq!(c_inv, BigUint::from(3u32));
+        assert_eq!(FiniteField::mult(&c, &c_inv, &p), BigUint::from(1u32))
+        // 1 is the identity element in an multiplication
+    }
 }
