@@ -14,8 +14,33 @@ struct EllipticCurve {
 }
 
 impl EllipticCurve {
-    fn add(c: &Point, d: &Point) -> Point {
-        todo!();
+    pub fn add(&self, c: &Point, d: &Point) -> Point {
+        assert!(self.is_on_curve(c), "Point is not in curve");
+        assert!(self.is_on_curve(d), "Point is not in curve");
+        assert!(*c != *d);
+
+        match (c,d) {
+            (Point::Identity, _) => d.clone(),
+            (_, Point::Identity) => c.clone(),
+            (Point::Coor(x1, y1), Point::Coor(x2, y2)) => {
+                // s = (y2 - y1) / (x2 - x1)
+                let y2_minus_y1 = FiniteField::substract(y2, y1, &self.p);
+                let x2_minus_x1 = FiniteField::substract(x2, x1, &self.p);
+                let s = FiniteField::divide(&y2_minus_y1, &x2_minus_x1, &self.p);
+
+                // x3 = s^2 - x1 -x2 mod p
+                let s2 = s.modpow(&BigUint::from(2u32), &self.p);
+                let s2_minus_x1 = FiniteField::substract(&s2, x1, &self.p);
+                let x3 = FiniteField::substract(&s2_minus_x1, x2, &self.p);
+
+                // y3 = x(x1 - x3) - y1 mod p
+                let x1_minus_x3 = FiniteField::substract(x1, &x3, &self.p);
+                let s_mult_x1_minus_x3 = FiniteField::mult(&s, &x1_minus_x3, &self.p);
+                let y3 = FiniteField::substract(&s_mult_x1_minus_x3, &y1, &self.p);
+
+                Point::Coor(x3, y3)
+            }
+        }
     }
 
     fn double(c: &Point) -> Point {
@@ -224,5 +249,46 @@ mod test {
 
         // 4 / 3 mod 11 = 12 mod 11 = 1
         assert_eq!(FiniteField::divide(&c, &c, &p), BigUint::from(1u32))
+    }
+
+    #[test]
+    fn test_ec_point_addition() {
+        let ec = EllipticCurve {
+            a: BigUint::from(2u32),
+            b: BigUint::from(2u32),
+            p: BigUint::from(17u32),
+        };
+
+        // (6,3) + (5,1) = (10,6)
+        let p1 = Point::Coor(BigUint::from(6u32), BigUint::from(3u32));
+        let p2 = Point::Coor(BigUint::from(5u32), BigUint::from(1u32));
+        let pr = Point::Coor(BigUint::from(10u32), BigUint::from(6u32));
+
+        let res = ec.add(&p1, &p2);
+        assert_eq!(res, pr);
+
+        // commutative rule of a abelian group should be satisfy
+        let res = ec.add(&p2, &p1);
+        assert_eq!(res, pr);
+    }
+
+    #[test]
+    fn test_ec_point_addition_identity() {
+        let ec = EllipticCurve {
+            a: BigUint::from(2u32),
+            b: BigUint::from(2u32),
+            p: BigUint::from(17u32),
+        };
+
+        // (6,3) + I = (10,6)
+        let p1 = Point::Coor(BigUint::from(6u32), BigUint::from(3u32));
+        let p2 = Point::Identity;
+        let pr = p1.clone();
+
+        let res = ec.add(&p1, &p2);
+        assert_eq!(res, pr);
+
+        let res = ec.add(&p2, &p1);
+        assert_eq!(res, pr);
     }
 }
