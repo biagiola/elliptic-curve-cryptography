@@ -28,6 +28,34 @@ impl EllipticCurve {
         // B = d * A;
         todo!();
     }
+
+    pub fn is_on_curve(&self, c: &Point) -> bool {
+        match c {
+            Point::Coor(x, y) => {
+                // Curve Formula definition
+                // y^2 = x^3 + a * x + b
+
+                // y^2
+                let y2 = y.modpow(&BigUint::from(2u32), &self.p);
+                // x ^3
+                let x3 = x.modpow(&BigUint::from(3u32), &self.p);
+                // ax
+                let ax = FiniteField::mult(&self.a, x, &self.p);
+                // x3 + a * x
+                let x3_plus_ax = FiniteField::add(&x3, &ax, &self.p);
+
+                // final comparation
+                // y^2 = x^3 + a * x + b
+                y2 == FiniteField::add(&x3_plus_ax, &self.b, &self.p)
+
+                // Site note: we cannot use operations directly, we need to use
+                // the FiniteField operations
+                // let ax = &self.a * x;   // wrong
+                // y2 == x3 + ax + &self.b // wrong
+            },
+            Point::Identity => true
+        }
+    }
 }
 
 struct FiniteField {}
