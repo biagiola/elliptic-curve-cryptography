@@ -30,28 +30,58 @@ impl EllipticCurve {
                     return Point::Identity;
                 }
 
-                // s = (y2 - y1) / (x2 - x1)
-                let y2_minus_y1 = FiniteField::substract(y2, y1, &self.p);
-                let x2_minus_x1 = FiniteField::substract(x2, x1, &self.p);
-                let s = FiniteField::divide(&y2_minus_y1, &x2_minus_x1, &self.p);
+                let numerator = FiniteField::substract(y2, y1, &self.p);
+                let denominator = FiniteField::substract(x2, x1, &self.p);
+                let s = FiniteField::divide(&numerator, &denominator, &self.p);
 
-                // x3 = s^2 - x1 -x2 mod p
-                let s2 = s.modpow(&BigUint::from(2u32), &self.p);
-                let s2_minus_x1 = FiniteField::substract(&s2, x1, &self.p);
-                let x3 = FiniteField::substract(&s2_minus_x1, x2, &self.p);
-
-                // y3 = x(x1 - x3) - y1 mod p
-                let x1_minus_x3 = FiniteField::substract(x1, &x3, &self.p);
-                let s_mult_x1_minus_x3 = FiniteField::mult(&s, &x1_minus_x3, &self.p);
-                let y3 = FiniteField::substract(&s_mult_x1_minus_x3, &y1, &self.p);
-
+                let (x3, y3) = self.compute_x3_y3(&x1, &y1, &x2, &s);
                 Point::Coor(x3, y3)
             }
         }
     }
 
-    fn double(c: &Point) -> Point {
-        todo!();
+    fn double(&self, c: &Point) -> Point {
+        match c {
+            Point::Identity => Point::Identity,
+            Point::Coor(x1, y1) => {
+                // s = (3 * x1^2 + a) / (2 * y1) mod p
+                // x3 = s^2 - 2 * x1 mod p
+                // y3 = s(x1 - x3) - y1 mod p
+
+                // x1^2
+                let numerator = x1.modpow(&BigUint::from(2u32), &self.p);
+                // 3 * x1^2
+                let numerator = FiniteField::mult(&BigUint::from(3u32), &numerator, &self.p);
+                // 3 * x1^2 + a
+                let numerator = FiniteField::add(&self.a, &numerator, &self.p);
+                // 2 * y1
+                let denominator = FiniteField::mult(&BigUint::from(2u32), &y1, &self.p);
+                // (3 * x1^2 + a) / (2 * y1)
+                let s = FiniteField::divide(&numerator, &denominator, &self.p);
+
+                let (x3, y3) = self.compute_x3_y3(&x1, &y1, &x1, &s);
+                Point::Coor(x3, y3)
+            }
+        }
+    }
+
+    fn compute_x3_y3(
+        &self, x1: &BigUint,
+        y1: &BigUint,
+        x2: &BigUint,
+        s: &BigUint
+    ) -> (BigUint, BigUint){
+        // x3 = s^2 - x1 -x2 mod p
+        let s2 = s.modpow(&BigUint::from(2u32), &self.p);
+        let s2_minus_x1 = FiniteField::substract(&s2, x1, &self.p);
+        let x3 = FiniteField::substract(&s2_minus_x1, x2, &self.p);
+
+        // y3 = x(x1 - x3) - y1 mod p
+        let x1_minus_x3 = FiniteField::substract(x1, &x3, &self.p);
+        let s_mult_x1_minus_x3 = FiniteField::mult(&s, &x1_minus_x3, &self.p);
+        let y3 = FiniteField::substract(&s_mult_x1_minus_x3, &y1, &self.p);
+
+        (x3, y3)
     }
 
     fn scalar_mul(c: &Point, d: &Point) -> Point {
@@ -317,6 +347,40 @@ mod test {
 
         // commutative rule of a abelian group should be satisfy
         let res = ec.add(&p2, &p1);
+        assert_eq!(res, pr);
+    }
+
+    #[test]
+    fn test_ec_point_doubling() {
+        // y^2 = x^3 + 2x + 2 mod 17
+        let ec = EllipticCurve {
+            a: BigUint::from(2u32),
+            b: BigUint::from(2u32),
+            p: BigUint::from(17u32),
+        };
+
+        // (5,1) + (5,1) = 2 (5,1) = (6,3)
+        let p1 = Point::Coor(BigUint::from(5u32), BigUint::from(1u32));
+        let pr = Point::Coor(BigUint::from(6u32), BigUint::from(3u32));
+
+        let res = ec.double(&p1);
+        assert_eq!(res, pr);
+    }
+
+    #[test]
+    fn test_ec_point_doubling_identity() {
+        // y^2 = x^3 + 2x + 2 mod 17
+        let ec = EllipticCurve {
+            a: BigUint::from(2u32),
+            b: BigUint::from(2u32),
+            p: BigUint::from(17u32),
+        };
+
+        // I + I = 2 I = I
+        let p1 = Point::Identity;
+        let pr = Point::Identity;
+
+        let res = ec.double(&p1);
         assert_eq!(res, pr);
     }
 }
