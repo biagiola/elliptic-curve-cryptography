@@ -23,6 +23,13 @@ impl EllipticCurve {
             (Point::Identity, _) => d.clone(),
             (_, Point::Identity) => c.clone(),
             (Point::Coor(x1, y1), Point::Coor(x2, y2)) => {
+                // Handle additive inverse: P + (-P) = Identity (vertical line case)
+                // the line through them is vertical and doesn't intersect the curve at a third point
+                let y1_plus_y2 = FiniteField::add(&y1, &y2, &self.p);
+                if x1 == x2 && y1_plus_y2 == BigUint::from(0u32) {
+                    return Point::Identity;
+                }
+
                 // s = (y2 - y1) / (x2 - x1)
                 let y2_minus_y1 = FiniteField::substract(y2, y1, &self.p);
                 let x2_minus_x1 = FiniteField::substract(x2, x1, &self.p);
@@ -288,6 +295,27 @@ mod test {
         let res = ec.add(&p1, &p2);
         assert_eq!(res, pr);
 
+        let res = ec.add(&p2, &p1);
+        assert_eq!(res, pr);
+    }
+
+    #[test]
+    fn test_ec_point_addition_reflected_in_x() {
+        let ec = EllipticCurve {
+            a: BigUint::from(2u32),
+            b: BigUint::from(2u32),
+            p: BigUint::from(17u32),
+        };
+
+        // (5,16) + (5,1) = Point::Identity
+        let p1 = Point::Coor(BigUint::from(5u32), BigUint::from(16u32));
+        let p2 = Point::Coor(BigUint::from(5u32), BigUint::from(1u32));
+        let pr = Point::Identity;
+
+        let res = ec.add(&p1, &p2);
+        assert_eq!(res, pr);
+
+        // commutative rule of a abelian group should be satisfy
         let res = ec.add(&p2, &p1);
         assert_eq!(res, pr);
     }
