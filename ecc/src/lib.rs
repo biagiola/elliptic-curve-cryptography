@@ -1,7 +1,9 @@
 use num_bigint::{BigUint};
-struct Point {
-    x: BigUint,
-    y: BigUint,
+
+#[derive(PartialEq, Clone, Debug)]
+enum Point {
+    Coor(BigUint, BigUint),
+    Identity,
 }
 
 struct EllipticCurve {
@@ -58,11 +60,21 @@ impl FiniteField {
         p - c
     }
 
+    fn substract(c: &BigUint, d: &BigUint, p: &BigUint) -> BigUint {
+        let d_inv = FiniteField::inv_addition(d, p);
+        FiniteField::add(c, &d_inv, p)
+    }
+
     fn inv_multiplication(c: &BigUint, p: &BigUint) -> BigUint {
         // TODO: this function is limited. It use Fermat's Little Theorem and thus
         // it's only is valid for p prime
         // c^(-1) mod p = c^(p-2) mod p
         c.modpow(&(p - BigUint::from(2u32)), p)
+    }
+
+    fn divide(c: &BigUint, d: &BigUint, p: &BigUint) -> BigUint {
+        let d_inv = FiniteField::inv_multiplication(d, p);
+        FiniteField::mult(c, &d_inv, p)
     }
 }
 
@@ -153,6 +165,14 @@ mod test {
     }
 
     #[test]
+    fn test_substract() {
+        let c = BigUint::from(4u32);
+        let p = BigUint::from(51u32);
+
+        assert_eq!(FiniteField::substract(&c, &c, &p), BigUint::from(0u32))
+    }
+
+    #[test]
     fn test_inv_multiplication_identity() {
         let c = BigUint::from(4u32);
         let p = BigUint::from(11u32);
@@ -164,5 +184,17 @@ mod test {
         assert_eq!(c_inv, BigUint::from(3u32));
         assert_eq!(FiniteField::mult(&c, &c_inv, &p), BigUint::from(1u32))
         // 1 is the identity element in an multiplication
+    }
+
+    #[test]
+    fn test_divide() {
+        let c = BigUint::from(4u32);
+        let p = BigUint::from(11u32);
+
+        // p - c
+        let c_inv = FiniteField::inv_multiplication(&c, &p);
+
+        // 4 / 3 mod 11 = 12 mod 11 = 1
+        assert_eq!(FiniteField::divide(&c, &c, &p), BigUint::from(1u32))
     }
 }
