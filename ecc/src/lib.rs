@@ -23,6 +23,7 @@ impl EllipticCurve {
             (Point::Identity, _) => d.clone(),
             (_, Point::Identity) => c.clone(),
             (Point::Coor(x1, y1), Point::Coor(x2, y2)) => {
+                // println!("{} {}", &y1, &y2);
                 // Handle additive inverse: P + (-P) = Identity (vertical line case)
                 // the line through them is vertical and doesn't intersect the curve at a third point
                 let y1_plus_y2 = FiniteField::add(&y1, &y2, &self.p);
@@ -440,5 +441,61 @@ mod test {
         let pr = Point::Identity;
         let res = ec.scalar_mult(&c, &BigUint::from(19u32));
         assert_eq!(res, pr);
+    }
+
+    #[test]
+    fn test_ec_secp256k1() {
+        /*
+            Curve definition:
+            y^2 = x^3 + 7
+
+            p = FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFE FFFFFC2F
+            n = FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFE BAAEDCE6 AF48A03B BFD25E8C D0364141
+            G = (
+                x = 79BE667E F9DCBBAC 55A06295 CE870B07 029BFCDB 2DCE28D9 59F2815B 16F81798
+                y = 483ADA77 26A3C465 5DA4FBFC 0E1108A8 FD17B448 A6855419 9C47D08F FB10D4B8
+            )
+            a = 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000
+            b = 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000007
+        */
+
+        // n * G = I
+        let p = BigUint::parse_bytes(
+            b"FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F",
+            16
+        )
+        .expect("could not convert");
+
+        let n = BigUint::parse_bytes(
+            b"FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141",
+            16
+        )
+        .expect("could not convert");
+
+        let gx = BigUint::parse_bytes(
+            b"79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798",
+            16
+        )
+        .expect("could not convert");
+
+        let gy = BigUint::parse_bytes(
+            b"483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8",
+            16
+        )
+        .expect("could not convert");
+
+        let ec = EllipticCurve {
+            a: BigUint::from(0u32),
+            b: BigUint::from(7u32),
+            p,
+        };
+
+        let g = Point::Coor(gx, gy);
+        let res = ec.scalar_mult(&g, &n);
+
+        assert_eq!(res, Point::Identity);
+
+        println!("{:2x?}", &g);
+        println!("{:2x?}", ec.scalar_mult(&g, &BigUint(3u32)));
     }
 }
