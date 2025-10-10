@@ -84,11 +84,18 @@ impl EllipticCurve {
         (x3, y3)
     }
 
-    fn scalar_mul(c: &Point, d: &Point) -> Point {
+    pub fn scalar_mult(&self, c: &Point, d: &BigUint) -> Point {
         // addition/doubling algorithm.
-        // A really big larga number like d times the generator A.
+        // A really big large number like d times the generator A.
         // B = d * A;
-        todo!();
+        let mut t = c.clone();
+        for i in (0..(d.bits() - 1)).rev() {
+            t = self.double(&t);
+            if d.bit(i) {
+                t = self.add(&t, c);
+            }
+        }
+        t
     }
 
     pub fn is_on_curve(&self, c: &Point) -> bool {
@@ -281,9 +288,6 @@ mod test {
         let c = BigUint::from(4u32);
         let p = BigUint::from(11u32);
 
-        // p - c
-        let c_inv = FiniteField::inv_multiplication(&c, &p);
-
         // 4 / 3 mod 11 = 12 mod 11 = 1
         assert_eq!(FiniteField::divide(&c, &c, &p), BigUint::from(1u32))
     }
@@ -381,6 +385,53 @@ mod test {
         let pr = Point::Identity;
 
         let res = ec.double(&p1);
+        assert_eq!(res, pr);
+    }
+
+    #[test]
+    fn test_ec_point_scalar_multiplication() {
+        // y^2 = x^3 + 2x + 2 mod 17
+        // the order of this group is 19 and every point
+        // |G| = 19
+        // btw groups that have order, which is a prime, means that every
+        // point in the curve is a generator.
+        // If we apply 19 * A = I where A is any point in the curve
+        let ec = EllipticCurve {
+            a: BigUint::from(2u32),
+            b: BigUint::from(2u32),
+            p: BigUint::from(17u32),
+        };
+
+        let c = Point::Coor(BigUint::from(5u32), BigUint::from(1u32));
+
+        // 2 (5,1) = (6,3)
+        let pr = Point::Coor(BigUint::from(6u32), BigUint::from(3u32));
+        let res = ec.scalar_mult(&c, &BigUint::from(2u32));
+        assert_eq!(res, pr);
+
+        // 10 (5,1) = (7,11)
+        let pr = Point::Coor(BigUint::from(7u32), BigUint::from(11u32));
+        let res = ec.scalar_mult(&c, &BigUint::from(10u32));
+        assert_eq!(res, pr);
+
+        // 16 (5,1) = (10,11)
+        let pr = Point::Coor(BigUint::from(10u32), BigUint::from(11u32));
+        let res = ec.scalar_mult(&c, &BigUint::from(16u32));
+        assert_eq!(res, pr);
+
+        // 17 (5,1) = (6,14)
+        let pr = Point::Coor(BigUint::from(6u32), BigUint::from(14u32));
+        let res = ec.scalar_mult(&c, &BigUint::from(17u32));
+        assert_eq!(res, pr);
+
+        // 18 (5,1) = (5,16)
+        let pr = Point::Coor(BigUint::from(5u32), BigUint::from(16u32));
+        let res = ec.scalar_mult(&c, &BigUint::from(18u32));
+        assert_eq!(res, pr);
+
+        // 19 (5,1) = I
+        let pr = Point::Identity;
+        let res = ec.scalar_mult(&c, &BigUint::from(19u32));
         assert_eq!(res, pr);
     }
 }
