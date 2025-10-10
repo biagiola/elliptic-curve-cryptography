@@ -1,12 +1,12 @@
 use num_bigint::{BigUint};
 
 #[derive(PartialEq, Clone, Debug)]
-enum Point {
+pub enum Point {
     Coor(BigUint, BigUint),
     Identity,
 }
 
-struct EllipticCurve {
+pub struct EllipticCurve {
     // y^2 = x^2 + a * x + b
     a: BigUint,
     b: BigUint,
@@ -40,7 +40,7 @@ impl EllipticCurve {
         }
     }
 
-    fn double(&self, c: &Point) -> Point {
+    pub fn double(&self, c: &Point) -> Point {
         match c {
             Point::Identity => Point::Identity,
             Point::Coor(x1, y1) => {
@@ -127,7 +127,7 @@ impl EllipticCurve {
     }
 }
 
-struct FiniteField {}
+pub struct FiniteField {}
 
 impl FiniteField {
     fn add(c: &BigUint, d: &BigUint, p: &BigUint) -> BigUint {
@@ -386,6 +386,13 @@ mod test {
 
         let res = ec.double(&p1);
         assert_eq!(res, pr);
+    }
+
+    #[test]
+    fn test_bits() {
+        let a = BigUint::from(2u32);
+        assert!(!a.bit(0));
+        assert!(a.bit(1));
     }
 
     #[test]
