@@ -136,6 +136,12 @@ impl EllipticCurve {
 
 pub struct FiniteField {}
 
+#[derive(Debug, PartialEq)]
+pub enum FiniteFieldError {
+    InvalidArgument(String),
+    InvalidResult(String),
+}
+
 impl FiniteField {
     pub fn add(c: &BigUint, d: &BigUint, p: &BigUint) -> BigUint {
         // c + d = r mod p
@@ -179,6 +185,22 @@ impl FiniteField {
     pub fn divide(c: &BigUint, d: &BigUint, p: &BigUint) -> BigUint {
         let d_inv = FiniteField::inv_multiplication(d, p);
         FiniteField::mult(c, &d_inv, p)
+    }
+
+    // TODO: implement Result enum
+    pub fn inv_mult_prime(a: &BigUint, p: &BigUint) -> BigUint {
+        // Ensure a < p (required for modular arithmetic)
+        // FiniteField::check_less_than(a, p)?;
+
+        // Compute a^(p-2) mod p using Fermat's Little Theorem
+        a.modpow(&(p - BigUint::from(2u32)), p)
+    }
+
+    pub fn check_less_than(a: &BigUint, b: &BigUint) -> Result<(), FiniteFieldError> {
+        if a >= b {
+            return Err(FiniteFieldError::InvalidArgument(format!("{} >= {}", a, b)));
+        }
+        Ok(())
     }
 }
 
