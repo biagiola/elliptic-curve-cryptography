@@ -1,5 +1,7 @@
 use num_bigint::{BigUint};
 
+pub mod ecdsa;
+
 #[derive(PartialEq, Clone, Debug)]
 pub enum Point {
     Coor(BigUint, BigUint),

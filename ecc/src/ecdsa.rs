@@ -1,9 +1,9 @@
-use ec_generic::{EllipticeCUrve, FiniteField, Point};
-use num_bigint::{BigUInt, RandBig};
+use crate::{EllipticCurve, FiniteField, Point};
+use num_bigint::{BigUint, RandBigInt};
 use rand::{self, Rng};
 use sha256::{digest, try_digest};
 
-struct ECDSA {
+pub struct ECDSA {
     elliptic_curve: EllipticCurve,
     a_gen: Point,
     q_order: BigUint,
@@ -13,16 +13,16 @@ impl ECDSA {
     // Generate: d, B where B = d A
     pub fn generate_key_pair(&self) -> (BigUint, Point) {
         let priv_key = self.generate_priv_key();
-        let pub_key = self.generate_pub_key();
+        let pub_key = self.generate_pub_key(&priv_key);
         (priv_key, pub_key)
     }
 
     pub fn generate_priv_key(&self) -> BigUint {
-        self.generate_random_positive_number_less_than(&self.q_order);
+        self.generate_random_positive_number_less_than(&self.q_order)
     }
 
-    pub fn generate_pub_key(&self, priv_key: &BigUint) -> BigUint {
-        self.elliptic_curve.scalar_mul(&self.a_gen, &priv_key)
+    pub fn generate_pub_key(&self, priv_key: &BigUint) -> Point {
+        self.elliptic_curve.scalar_mult(&self.a_gen, priv_key)
     }
 
     // (0, max)
@@ -53,12 +53,12 @@ impl ECDSA {
             "Random number `k` is bigger than the order of the EC group"
         );
 
-        let r_point: Point = self.elliptic_curve.scalar_mul(&self.a_gen, k_random);
+        let r_point: Point = self.elliptic_curve.scalar_mult(&self.a_gen, k_random);
 
         if let Point::Coor(r, _) = r_point {
             let s = FiniteField::mult(&r, priv_key, &self.q_order);
             let s = FiniteField::add(&s, hash, &self.q_order);
-            let k_inv = FiniteField::inv_mult_prime(k_random, &self.q_order);
+            let k_inv = FiniteField::inv_multiplication(k_random, &self.q_order);
             let s = FiniteField::mult(&s, &k_inv, &self.q_order);
 
             return (r, s);
@@ -77,16 +77,16 @@ mod test {
     use super::*;
 
     #[test]
-    test_sign_virfy() {
-        let elliptic_curve = EllipticCurve {
-            a: BigUint::from(2u32),
-            b: BigUInt::from(2u32),
-            p: BigUInt::from(17u32),
-        };
+    fn test_sign_verify() {
+        let elliptic_curve = EllipticCurve::new(
+            BigUint::from(2u32),
+            BigUint::from(2u32),
+            BigUint::from(17u32),
+        );
 
-        let a_gen = Point::Coor(BigUInt::from(5u32), BigUInt::from(1u32));
+        let a_gen = Point::Coor(BigUint::from(5u32), BigUint::from(1u32));
 
-        let q_order = BigUInt::from(19u32);
+        let q_order = BigUint::from(19u32);
 
         let ecdsa = ECDSA {
             elliptic_curve,
@@ -97,10 +97,10 @@ mod test {
         let priv_key = BigUint::from(7u32);
         let pub_key = ecdsa.generate_pub_key(&priv_key);
 
-        let hash = BigUInt::from(10u32);
-        let k_random = BigUInt::from(18u32);
+        let hash = BigUint::from(10u32);
+        let k_random = BigUint::from(18u32);
 
-        let signature = ecdsa.sign(hash, &priv_key, k_random);
+        let signature = ecdsa.sign(&hash, &priv_key, &k_random);
 
         println!("signature: {:?}", signature);
     }
